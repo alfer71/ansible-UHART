@@ -1,0 +1,144 @@
+---
+- name: Gather information from RHEL8 server and create web pages
+  hosts: uhartnonprodservers
+  remote_user: root
+  vars:
+    dest_base_path: "/tmp/html-report/uhart"
+    src_path: "/tmp/server_info"
+    current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+
+  tasks:
+    - name: Ensure output directory exists on remote
+      file:
+        path: "{{ src_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: Gather hostname and IP address
+      shell: |
+        echo "<h2>Hostname: $(hostname)</h2>" > "{{ src_path }}/system_info.html"
+        echo "<p>IP Address: $(hostname -I)</p>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check uptime
+      shell: |
+        echo "<h3>Uptime:</h3><p>" >> "{{ src_path }}/system_info.html"
+        uptime >> "{{ src_path }}/system_info.html"
+        echo "</p>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check number of processors
+      shell: |
+        echo "<h3>Processors:</h3><p>" >> "{{ src_path }}/system_info.html"
+        nproc >> "{{ src_path }}/system_info.html"
+        echo "</p>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check memory
+      shell: |
+        echo "<h3>Memory:</h3><p>" >> "{{ src_path }}/system_info.html"
+        free -h >> "{{ src_path }}/system_info.html"
+        echo "</p>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check local filesystems
+      shell: |
+        echo "<h3>Local Filesystems:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        df -h --exclude-type=tmpfs --exclude-type=devtmpfs --exclude-type=nfs --exclude-type=cifs >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check NFS and CIFS mounts
+      shell: |
+        echo "<h3>NFS and CIFS mounts:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        df -hT | grep -E 'nfs|cifs' >> "{{ src_path }}/system_info.html" || echo "No NFS or CIFS mounts found" >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check firewall status and save rules if active
+      shell: |
+        echo "<h3>Firewall status:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        firewall-cmd --state >> "{{ src_path }}/system_info.html" && firewall-cmd --list-all >> "{{ src_path }}"/system_info.html || echo "Firewall is not running" >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check iptables status and save rules if active
+      shell: |
+        echo "<h3>Iptables status:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        systemctl is-active iptables >> "{{ src_path }}/system_info.html" && iptables-save >> "{{ src_path }}/system_info.html" || echo "Iptables is not running" >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Display fstab content
+      shell: |
+        echo "<h3>fstab content:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        cat /etc/fstab >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Display passwd content
+      shell: |
+        echo "<h3>passwd content:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        cat /etc/passwd >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: List crontab jobs
+      shell: |
+        echo "<h3>Crontab jobs:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        crontab -l >> "{{ src_path }}/system_info.html" || echo "No crontab for root" >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check active services
+      shell: |
+        echo "<h3>Active services:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        systemctl list-units --type=service --state=active >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Top 7 memory consuming processes
+      shell: |
+        echo "<h3>Top 7 memory consuming processes:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        ps aux --sort=-%mem | head -n 8 >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Top 7 CPU consuming processes
+      shell: |
+        echo "<h3>Top 7 CPU consuming processes:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        ps aux --sort=-%cpu | head -n 8 >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Last 7 users that logged in
+      shell: |
+        echo "<h3>Last 7 users that logged in:</h3><pre>" >> "{{ src_path }}/system_info.html"
+        last -n 7 >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
+    - name: Check when the system was last patched
+      shell: |
+        echo "<h3>Last system patch:</h3>" >> /system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+"{{ src_path }}/system_info.html"
+        echo "<pre>" >> "{{ src_path }}/system_info.html"
+        dnf history | grep update >> "{{ src_path }}
+    - name: Create file with last updated packages
+      shell: |
+        echo "<h3>Last updated packages:</h3><pre>" > "{{ src_path }}/last_updated_packages.html"
+        rpm -qa --last >> "{{ src_path }}/last_updated_packages.html"
+        echo "</pre>" >> "{{ src_path }}/last_updated_packages.html"
+
+    - name: Merge all output into a single HTML file
+      shell: |
+        cat "{{ src_path }}/system_info.html" > "{{ src_path }}/complete_info.html"
+        cat "{{ src_path }}/last_updated_packages.html" >> "{{ src_path }}/complete_info.html"
+
+    - name: Clean up temporary files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ src_path }}/system_info.html"
+        - "{{ src_path }}/last_updated_packages.html"
+
+    - name: Create directory with the current date on the local host
+      file:
+        path: "{{ dest_base_path }}/{{ current_date }}"
+        state: directory
+        mode: '0755'
+
+    - name: Fetch the passwd file from the remote host
+      ansible.builtin.fetch:
+        src: "{{ src_path }}/complete_info.html"
+        dest: "{{ dest_base_path }}/{{ current_date }}/{{ inventory_hostname }}_complete_info.html"
+        flat: yes
+      become: yes
+      become_method: sudo
