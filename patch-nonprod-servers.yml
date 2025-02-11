@@ -1,0 +1,30 @@
+---
+- hosts: uhartnonprodservers
+  gather_facts: yes
+  remote_user: root
+
+  tasks:
+    - name: Clean package cache
+      ansible.builtin.command: dnf clean all
+
+    - name: Remove old kernels while keeping only the latest two
+      shell: "dnf remove -y $(dnf repoquery --installonly --latest-limit=-2 -q)"
+      register: remove_kernels
+      changed_when: "'Removed:' in remove_kernels.stdout"
+
+    - name: Update all packages to the latest version on RHEL 8.10
+      dnf:
+        name: "*"
+        state: latest
+      register: dnf_update_status
+
+    - name: Reboot server if required
+      reboot:
+        msg: "Rebooting for kernel updates"
+        reboot_timeout: 600
+      when: dnf_update_status is changed
+
+    - name: Display the output that the system is patched
+      debug:
+        msg: "The system {{ inventory_hostname }} is successfully patched to the latest updates"
+      when: dnf_update_status is changed
