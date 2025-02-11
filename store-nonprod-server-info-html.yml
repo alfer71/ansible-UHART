@@ -1,4 +1,4 @@
- ---
+---
 - name: Gather information from RHEL8 server and create web pages
   hosts: uhartnonprodservers
   remote_user: root
