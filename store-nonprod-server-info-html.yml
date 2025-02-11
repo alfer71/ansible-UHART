@@ -1,4 +1,4 @@
----
+ ---
 - name: Gather information from RHEL8 server and create web pages
   hosts: uhartnonprodservers
   remote_user: root
@@ -105,11 +105,11 @@
 
     - name: Check when the system was last patched
       shell: |
-        echo "<h3>Last system patch:</h3>" >> /system_info.html"
-        echo "</pre>" >> "{{ src_path }}/system_info.html"
-"{{ src_path }}/system_info.html"
+        echo "<h3>Last system patch:</h3>" >> "{{ src_path }}/system_info.html"
         echo "<pre>" >> "{{ src_path }}/system_info.html"
-        dnf history | grep update >> "{{ src_path }}
+        dnf history | grep update >> "{{ src_path }}/system_info.html"
+        echo "</pre>" >> "{{ src_path }}/system_info.html"
+
     - name: Create file with last updated packages
       shell: |
         echo "<h3>Last updated packages:</h3><pre>" > "{{ src_path }}/last_updated_packages.html"
