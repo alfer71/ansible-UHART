@@ -1,9 +1,9 @@
-- name: Check server uptime
-  hosts: all
-  become: no
-  gather_facts: no
+---
+- hosts: uhartnonprodservers
+  gather_facts: yes
+  remote_user: root
   tasks:
-
+    
     - name: Get system uptime
       command: uptime -p
       register: uptime_result
