@@ -1,0 +1,14 @@
+- name: Check server uptime
+  hosts: all
+  become: no
+  gather_facts: no
+  tasks:
+
+    - name: Get system uptime
+      command: uptime -p
+      register: uptime_result
+      changed_when: false
+
+    - name: Display uptime
+      debug:
+        msg: "Server has been up for: {{ uptime_result.stdout }}"
