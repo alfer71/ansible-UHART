@@ -5,8 +5,22 @@
   remote_user: root
   tasks:
 
+    - name: Define CVEs being checked
+      set_fact:
+        cve_list: 
+          - CVE-2024-36387
+          - CVE-2024-38472
+          - CVE-2024-38473
+          - CVE-2024-38474
+          - CVE-2024-38475
+          - CVE-2024-38476
+          - CVE-2024-38477
+          - CVE-2024-39573
+          - CVE-2022-1292
+          - CVE-2022-2068
+
     - name: Check for CVE updates in dnf updateinfo
-      shell: dnf updateinfo list | grep -E "CVE-2024-36387|CVE-2024-38472|CVE-2024-38473|CVE-2024-38474|CVE-2024-38475|CVE-2024-38476|CVE-2024-38477|CVE-2024-39573|CVE-2022-1292|CVE-2022-2068"
+      shell: dnf updateinfo list | grep -E "{{ cve_list | join('|') }}"
       register: dnf_cve_check
       ignore_errors: yes
 
@@ -33,14 +47,31 @@
       when: httpd_installed.rc == 0
       ignore_errors: yes
 
+    - name: Extract CVEs found in the system
+      set_fact:
+        found_cves: "{{ (dnf_cve_check.stdout_lines + openssl_cve_check.stdout_lines + (httpd_cve_check.stdout_lines if httpd_installed.rc == 0 else [])) | select('search', 'CVE-') | list }}"
+
+    - name: Extract CVEs that were checked but not found
+      set_fact:
+        not_found_cves: "{{ cve_list | difference(found_cves | map('regex_search', 'CVE-[0-9]+-[0-9]+') | select('string') | list) }}"
+
+    - name: Display checked CVEs
+      debug:
+        msg: 
+          - "🔎 CVEs Checked: {{ cve_list | join(', ') }}"
+          - "✅ CVEs NOT found in the system: {{ not_found_cves | join(', ') }}"
+      when: not_found_cves | length > 0
+
+    - name: Display CVEs found in the system
+      debug:
+        msg: "⚠️ The following CVEs were found on this system: {{ found_cves | join(', ') }}"
+      when: found_cves | length > 0
+
     - name: Determine if the system is vulnerable
       set_fact:
-        vulnerable: "{{ (dnf_cve_check.stdout | length > 0) or 
-                       (openssl_cve_check.stdout | length == 0) or 
-                       (httpd_installed.rc == 0 and httpd_cve_check.stdout | length == 0) }}"
+        vulnerable: "{{ found_cves | length > 0 }}"
 
-    - name: Display vulnerability status
+    - name: Display final vulnerability status
       debug:
         msg: "{{ '⚠️ System is VULNERABLE to at least one CVE! Apply patches ASAP!' if vulnerable else '✅ System is NOT vulnerable to the specified CVEs.' }}"
-
 
