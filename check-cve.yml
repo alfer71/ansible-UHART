@@ -18,8 +18,14 @@
     - name: Check if HTTPD is installed
       command: rpm -q httpd
       register: httpd_installed
-      ignore_errors: yes
+      ignore_errors: true
+      failed_when: false
       changed_when: false
+
+    - name: Display message if HTTPD is not installed
+      debug:
+        msg: "ℹ️ HTTPD package is NOT installed on this server."
+      when: httpd_installed.rc != 0
 
     - name: Check HTTPD package changelog for vulnerabilities
       shell: rpm -q --changelog httpd | grep -i "CVE-2024-38473\|CVE-2024-38476" || true
@@ -36,4 +42,5 @@
     - name: Display vulnerability status
       debug:
         msg: "{{ '⚠️ System is VULNERABLE to at least one CVE! Apply patches ASAP!' if vulnerable else '✅ System is NOT vulnerable to the specified CVEs.' }}"
+
 
