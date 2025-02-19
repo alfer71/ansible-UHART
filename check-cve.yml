@@ -1,0 +1,29 @@
+---
+- name: Check CVE vulnerabilities on RHEL 8
+  hosts: uhartnonprodservers
+  gather_facts: yes
+  remote_user: root
+  tasks:
+
+    - name: Check for CVE updates in dnf updateinfo
+      shell: dnf updateinfo list | grep -E "CVE-2024-36387|CVE-2024-38472|CVE-2024-38473|CVE-2024-38474|CVE-2024-38475|CVE-2024-38476|CVE-2024-38477|CVE-2024-39573|CVE-2022-1292|CVE-2022-2068"
+      register: dnf_cve_check
+      ignore_errors: yes
+
+    - name: Check OpenSSL package changelog for vulnerabilities
+      shell: rpm -q --changelog openssl | grep -i "CVE-2022-1292\|CVE-2022-2068"
+      register: openssl_cve_check
+      ignore_errors: yes
+
+    - name: Check HTTPD package changelog for vulnerabilities
+      shell: rpm -q --changelog httpd | grep -i "CVE-2024-38473\|CVE-2024-38476"
+      register: httpd_cve_check
+      ignore_errors: yes
+
+    - name: Determine if the system is vulnerable
+      set_fact:
+        vulnerable: "{{ (dnf_cve_check.stdout | length > 0) or (openssl_cve_check.stdout | length == 0) or (httpd_cve_check.stdout | length == 0) }}"
+
+    - name: Display vulnerability status
+      debug:
+        msg: "{{ '⚠️ System is VULNERABLE to at least one CVE! Apply patches ASAP!' if vulnerable else '✅ System is NOT vulnerable to the specified CVEs.' }}"
