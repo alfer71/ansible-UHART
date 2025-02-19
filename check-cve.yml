@@ -11,19 +11,29 @@
       ignore_errors: yes
 
     - name: Check OpenSSL package changelog for vulnerabilities
-      shell: rpm -q --changelog openssl | grep -i "CVE-2022-1292\|CVE-2022-2068"
+      shell: rpm -q --changelog openssl | grep -i "CVE-2022-1292\|CVE-2022-2068" || true
       register: openssl_cve_check
       ignore_errors: yes
 
+    - name: Check if HTTPD is installed
+      command: rpm -q httpd
+      register: httpd_installed
+      ignore_errors: yes
+      changed_when: false
+
     - name: Check HTTPD package changelog for vulnerabilities
-      shell: rpm -q --changelog httpd | grep -i "CVE-2024-38473\|CVE-2024-38476"
+      shell: rpm -q --changelog httpd | grep -i "CVE-2024-38473\|CVE-2024-38476" || true
       register: httpd_cve_check
+      when: httpd_installed.rc == 0
       ignore_errors: yes
 
     - name: Determine if the system is vulnerable
       set_fact:
-        vulnerable: "{{ (dnf_cve_check.stdout | length > 0) or (openssl_cve_check.stdout | length == 0) or (httpd_cve_check.stdout | length == 0) }}"
+        vulnerable: "{{ (dnf_cve_check.stdout | length > 0) or 
+                       (openssl_cve_check.stdout | length == 0) or 
+                       (httpd_installed.rc == 0 and httpd_cve_check.stdout | length == 0) }}"
 
     - name: Display vulnerability status
       debug:
         msg: "{{ '⚠️ System is VULNERABLE to at least one CVE! Apply patches ASAP!' if vulnerable else '✅ System is NOT vulnerable to the specified CVEs.' }}"
+
