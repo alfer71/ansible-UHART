@@ -7,17 +7,15 @@
     - name: Clean package cache
       ansible.builtin.command: dnf clean all
 
-    - name: Remove old kernels, keeping only the latest 2
-      ansible.builtin.command: |
-        package-cleanup --oldkernels --count=2
-      ignore_errors: yes
+    - name: Remove old kernels while keeping only the latest two
+      shell: "dnf remove -y $(dnf repoquery --installonly --latest-limit=-2 -q)"
+      register: remove_kernels
+      changed_when: "'Removed:' in remove_kernels.stdout"
 
     - name: Update all packages to the latest version on RHEL 8.10
       dnf:
         name: "*"
         state: latest
-      become: yes
-      become_user: root
       register: dnf_update_status
 
     - name: Reboot server if required
@@ -25,8 +23,6 @@
         msg: "Rebooting for kernel updates"
         reboot_timeout: 600
       when: dnf_update_status is changed
-      become: yes
-      become_user: root
 
     - name: Display the output that the system is patched
       debug:
