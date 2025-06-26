@@ -1,5 +1,5 @@
 ---
-- hosts: uhartnonprodservers
+- hosts: uhartprodservers
   gather_facts: yes
   remote_user: root
   tasks:
