@@ -1,6 +1,6 @@
 ---
 - hosts: uhartprodservers
-   vars:
+  vars:
     ansible_python_interpreter: /usr/bin/python3.9
   gather_facts: yes
   remote_user: root
